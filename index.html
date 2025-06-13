@@ -1,349 +1,49 @@
 <!DOCTYPE html>
 <html>
 <head>
-	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-    
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    
-    <!-- Woooooo! -->
-    
-    <title>Good Apple Analytics Testing Website</title>
-    
-<meta name="robots" content="noindex">
+  <title>Game System Finder</title>
+  <style>
+    body { font-family: Arial; padding: 20px; }
+    input { width: 300px; padding: 5px; }
+    #results { margin-top: 20px; }
+  </style>
+</head>
+<body>
+  <h1>Search for a Game</h1>
+  <input type="text" id="searchInput" placeholder="Enter game name...">
+  <div id="results"></div>
 
-<div id="gameSearchAppContainer">
-    <h2>Search Our Game Library</h2>
-    <form role="search" onsubmit="event.preventDefault();">
-        <label for="gameSearchInput" class="visually-hidden-search-label">Search for games:</label>
-        <input type="text" id="gameSearchInput" placeholder="E.g., Mario, Zelda, Sonic..." aria-label="Search for games" aria-describedby="gameSearchHelpText" disabled>
-        <p id="gameSearchHelpText" class="visually-hidden-search-label">Enter keywords to find games in our library.</p>
-    </form>
-    <div id="gameSearchLoading" style="display:none;">
-        <div class="search-spinner"></div>
-        <p>Loading game data, please wait...</p>
-    </div>
-    <ul id="gameSearchResults" aria-live="polite" aria-atomic="true">
-        </ul>
-</div>
+  <script>
+    const CSV_URL = "\https://docs.google.com/spreadsheets/d/e/2PACX-1vTVOeKfq89TQzVNoLaHxXAEwMSCyCy5jCKYdbSL2pP2KI2PB5boqZcLVIC1l9RM4onuT6gBO7HUg426/pub?output=csv"; // Replace with your published CSV URL
+    let games = [];
 
-<style>
-   .visually-hidden-search-label {
-        position: absolute;
-        width: 1px;
-        height: 1px;
-        padding: 0;
-        margin: -1px;
-        overflow: hidden;
-        clip: rect(0, 0, 0, 0);
-        white-space: nowrap;
-        border: 0;
-    }
-    #gameSearchAppContainer {
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
-        max-width: 650px;
-        margin: 25px auto;
-        padding: 20px;
-        border: 1px solid #dadce0;
-        border-radius: 8px;
-        background-color: #fff;
-        box-shadow: 0 1px 3px rgba(60,64,67,0.15);
-    }
-    #gameSearchAppContainer h2 {
-        margin-top: 0;
-        margin-bottom: 20px;
-        color: #202124;
-        font-size: 22px;
-        text-align: center;
-    }
-    #gameSearchInput {
-        width: 100%;
-        padding: 12px 15px;
-        margin-bottom: 20px;
-        border: 1px solid #dadce0;
-        border-radius: 4px;
-        font-size: 16px;
-        box-sizing: border-box;
-        transition: border-color 0.2s ease-in-out;
-    }
-    #gameSearchInput:focus {
-        border-color: #1a73e8;
-        outline: none;
-        box-shadow: 0 0 0 2px rgba(26,115,232,0.2);
-    }
-    #gameSearchLoading {
-        text-align: center;
-        padding: 25px;
-        color: #5f6368;
-    }
-    #gameSearchLoading p {
-        margin-top: 10px;
-        font-size: 14px;
-    }
-   .search-spinner {
-        margin: 0 auto;
-        border: 4px solid rgba(0,0,0,0.1);
-        width: 30px;
-        height: 30px;
-        border-radius: 50%;
-        border-left-color: #1a73e8; /* Google Blue */
-        animation: search-spin 1s linear infinite;
-    }
-    @keyframes search-spin {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
-    }
-    #gameSearchResults {
-        list-style-type: none;
-        padding-left: 0;
-        margin-top: 0;
-        max-height: 400px;
-        overflow-y: auto;
-        border: 1px solid #dadce0;
-        border-radius: 4px;
-    }
-    #gameSearchResults li {
-        padding: 10px 15px;
-        border-bottom: 1px solid #e8eaed;
-        font-size: 15px;
-        color: #3c4043;
-    }
-    #gameSearchResults li:last-child {
-        border-bottom: none;
-    }
-    #gameSearchResults li:empty { /* Hide empty list items if search is cleared */
-        display: none;
-    }
-   .search-highlight {
-        background-color: #fdffc9; /* Softer yellow */
-        font-weight: 600;
-        padding: 1px 0;
-    }
-    #gameSearchResults em {
-        font-size: 0.9em;
-        color: #5f6368;
-        margin-left: 8px;
-        font-style: normal;
-    }
-</style>
-
-<script src="https://cdn.jsdelivr.net/npm/fuse.js@6.6.2"></script>
-
-<script>
-    // --- Configuration ---
-    // IMPORTANT: User MUST replace this with the actual published URL of their "System List" CSV.
-    // This CSV should contain at least two columns: 
-    // Column 1: 'System Name' (e.g., Nintendo Entertainment System)
-    // Column 2: 'Published CSV URL for that System's Games' (the URL obtained from File > Share > Publish to web > CSV)
-    const MASTER_SYSTEM_LIST_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vS25O9z3MKGBWo60B-11XPXmpfWULX02HhNhzNGVGeNxxdfl3VTx65kFeZEg0TeYvqe64ybyUq0gWsw/pubhtml';
-
-    // DOM Element References
-    const searchInputElement = document.getElementById('gameSearchInput');
-    const resultsContainerElement = document.getElementById('gameSearchResults');
-    const loadingIndicatorElement = document.getElementById('gameSearchLoading');
-
-    // Data Stores
-    let gameSystemsList =;
-    let allGamesDataStore =;
-    let fuseInstance;
-
-    // --- Debounce Function ---
-    function debounce(func, delay) {
-        let timeoutId;
-        return (...args) => {
-            clearTimeout(timeoutId);
-            timeoutId = setTimeout(() => {
-                func.apply(this, args);
-            }, delay);
-        };
-    }
-
-    // --- Fetch CSV Data Function ---
-    async function fetchCSVData(url) {
-        try {
-            const response = await fetch(url);
-            if (!response.ok) {
-                console.error(`Error fetching CSV from ${url}: ${response.status} ${response.statusText}`);
-                throw new Error(`HTTP error ${response.status} for ${url}`);
-            }
-            return await response.text();
-        } catch (error) {
-            console.error(`Network or fetch error for ${url}:`, error);
-            resultsContainerElement.innerHTML = `<li>Error loading data from a system list. Please check console.</li>`;
-            throw error;
-        }
-    }
-
-    // --- Parse Master System List CSV ---
-    // Assumes CSV format: System Name,Published Game List CSV URL
-    function parseMasterSystemListCSV(csvText) {
-        const systems =;
-        const lines = csvText.trim().split('\\n');
-        for (let i = 1; i < lines.length; i++) { // Start from 1 to skip header row
-            const cells = lines[i].split(',');
-            if (cells.length >= 2) {
-                const systemName = cells.trim().replace(/^"|"$/g, '');
-                const systemUrl = cells.trim().replace(/^"|"$/g, '');
-                if (systemName && systemUrl) {
-                    systems.push({ name: systemName, url: systemUrl });
-                }
-            }
-        }
-        return systems;
-    }
-
-    // --- Parse Individual Game List CSV ---
-    function parseGameListCSVText(csvText, systemName) {
-        const games =;
-        const lines = csvText.trim().split('\\n');
-        // Basic header detection (e.g. if first line contains "game" or "title")
-        const headerKeywords = ['game', 'title', 'name', 'description'];
-        let startIndex = 0;
-        if (lines.length > 0 && headerKeywords.some(keyword => lines.toLowerCase().includes(keyword))) {
-            startIndex = 1; // Skip header row
-        }
-
-        for (let i = startIndex; i < lines.length; i++) {
-            const line = lines[i].trim();
-            if (!line) continue;
-
-            const cells = line.split(',');
-            let gameTitle = "";
-
-            // Attempt to find the first non-empty, meaningful cell as the game title.
-            // This handles simple lists and sheets where titles might not be in the very first column.
-            for (let j = 0; j < cells.length; j++) {
-                const cellContent = cells[j].trim().replace(/^"|"$/g, ''); // Remove surrounding quotes
-                if (cellContent && cellContent.length > 1) { // Consider a cell meaningful if > 1 char
-                    gameTitle = cellContent;
-                    // Attempt to clean common parenthetical additions like (US), (Japan), (Rev A)
-                    // This is a heuristic and might need refinement based on specific data patterns.
-                    gameTitle = gameTitle.replace(/\\s*\\([\w\s.-]+(\\sVersion)?[\w\s.-]*\\)\\s*$/i, '').trim();
-                    gameTitle = gameTitle.replace(/\\s*Ver\\.\\s*[A-Z0-9.]+/i, '').trim();
-                    break; 
-                }
-            }
-            
-            if (gameTitle) {
-                games.push({ title: gameTitle, system: systemName });
-            }
-        }
-        return games;
-    }
-
-    // --- Initialize Application ---
-    async function initializeApp() {
-        loadingIndicatorElement.style.display = 'block';
-        searchInputElement.disabled = true;
-        resultsContainerElement.innerHTML = '';
-
-        if (MASTER_SYSTEM_LIST_URL === 'YOUR_PUBLISHED_SYSTEM_LIST_CSV_URL_HERE' ||!MASTER_SYSTEM_LIST_URL) {
-            loadingIndicatorElement.innerHTML = '<p>Error: Master System List URL is not configured. Please edit the script.</p>';
-            console.error('Master System List URL not configured.');
-            return;
-        }
-
-        try {
-            const masterListCSVText = await fetchCSVData(MASTER_SYSTEM_LIST_URL);
-            gameSystemsList = parseMasterSystemListCSV(masterListCSVText);
-
-            if (gameSystemsList.length === 0) {
-                loadingIndicatorElement.innerHTML = '<p>No game systems found. Check Master System List CSV format and content.</p>';
-                return;
-            }
-
-            const gameDataPromises = gameSystemsList.map(system =>
-                fetchCSVData(system.url)
-                   .then(csvText => parseGameListCSVText(csvText, system.name))
-                   .catch(err => {
-                        console.warn(`Failed to load or parse games for ${system.name}:`, err.message);
-                        return; // Return empty array for this system on error
-                    })
-            );
-
-            const allSystemGameData = await Promise.all(gameDataPromises);
-            allGamesDataStore =.concat(...allSystemGameData); // Flatten array of arrays
-
-            if (allGamesDataStore.length === 0) {
-                 loadingIndicatorElement.innerHTML = '<p>No game data loaded. Check individual system CSV URLs and formats.</p>';
-                 return;
-            }
-
-            if (typeof Fuse === 'undefined') {
-                console.error('Fuse.js library is not loaded.');
-                loadingIndicatorElement.innerHTML = '<p>Error: Search library (Fuse.js) not loaded. Search functionality disabled.</p>';
-                return;
-            }
-            
-            fuseInstance = new Fuse(allGamesDataStore, {
-                keys: ['title', 'system'],
-                includeScore: true,
-                threshold: 0.4, // Adjust for more/less fuzziness (0.0 = exact, 1.0 = anything)
-                ignoreLocation: true, // Match anywhere in the string
-                minMatchCharLength: 2 // Minimum characters in search term to trigger search
-            });
-
-            loadingIndicatorElement.style.display = 'none';
-            searchInputElement.disabled = false;
-            searchInputElement.placeholder = `Search ${allGamesDataStore.length.toLocaleString()} games...`;
-            searchInputElement.addEventListener('input', debounce(handleSearchInput, 350));
-
-        } catch (error) {
-            console.error('Error during app initialization:', error);
-            loadingIndicatorElement.innerHTML = `<p>Failed to initialize game search. Error: ${error.message}. Check console.</p>`;
-            searchInputElement.disabled = true;
-        }
-    }
-
-    // --- Handle Search Input ---
-    function handleSearchInput() {
-        const searchTerm = searchInputElement.value.trim();
-
-        if (!fuseInstance) {
-            resultsContainerElement.innerHTML = '<li>Search is not available.</li>';
-            return;
-        }
-
-        if (searchTerm.length < 2) {
-            resultsContainerElement.innerHTML = '';
-            return;
-        }
-
-        const fuseResults = fuseInstance.search(searchTerm); // Fuse.js handles case-insensitivity by default
-        const gamesToShow = fuseResults.map(result => result.item);
-        displayResults(gamesToShow, searchTerm);
-    }
-
-    // --- Display Results Function ---
-    function displayResults(games, searchTerm) {
-        resultsContainerElement.innerHTML = '';
-
-        if (games.length === 0) {
-            resultsContainerElement.innerHTML = '<li>No games found matching your query.</li>';
-            return;
-        }
-
-        const fragment = document.createDocumentFragment();
-        games.slice(0, 150).forEach(game => { // Display up to 150 results for performance
-            const li = document.createElement('li');
-            const titleHTML = highlightTerm(game.title, searchTerm);
-            const systemHTML = highlightTerm(game.system, searchTerm);
-            li.innerHTML = `${titleHTML} <em>(${systemHTML})</em>`;
-            fragment.appendChild(li);
+    async function loadCSV() {
+      const res = await fetch(CSV_URL);
+      const text = await res.text();
+      const rows = text.split("\n").map(r => r.split(","));
+      const headers = rows.shift();
+      games = rows.map(row => {
+        let obj = {};
+        headers.forEach((header, i) => {
+          obj[header.trim()] = row[i]?.trim();
         });
-        resultsContainerElement.appendChild(fragment);
+        return obj;
+      });
     }
 
-    // --- Highlight Term Function ---
-    function highlightTerm(text, term) {
-        if (!term ||!text) return text |
-| '';
-        const escapedTerm = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        const regex = new RegExp(`(${escapedTerm})`, 'gi');
-        return text.replace(regex, '<span class="search-highlight">$1</span>');
+    function searchGames(query) {
+      const results = games.filter(g => g["Game Title"]?.toLowerCase().includes(query.toLowerCase()));
+      document.getElementById("results").innerHTML = results.map(r =>
+        `<div><strong>${r["Game Title"]}</strong> - ${r["System"]}</div>`
+      ).join("") || "<em>No results found.</em>";
     }
 
-    // --- Start the app ---
-    document.addEventListener('DOMContentLoaded', initializeApp);
-</script>
+    document.getElementById("searchInput").addEventListener("input", e => {
+      searchGames(e.target.value);
+    });
 
-</body></html>
+    loadCSV();
+  </script>
+</body>
+</html>
+  
